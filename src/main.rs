@@ -100,7 +100,7 @@ fn get_chapter(initial_url: &str) -> Result<(Option<String>, String, Option<Html
 }
 
 fn write_to_dest(contents: &str, dest: &Option<PathBuf>) -> Result<()> {
-    if let &Some(ref path) = dest {
+    if let Some(ref path) = *dest {
         let mut f = File::create(path).chain_err(|| "Error creating file")?;
         f.write_all(contents.as_bytes()).chain_err(|| "Error writing contents to file")?;
     } else {
@@ -109,19 +109,19 @@ fn write_to_dest(contents: &str, dest: &Option<PathBuf>) -> Result<()> {
     Ok(())
 }
 
-fn crawl(initial_url: String, series: bool, dest: Option<PathBuf>) -> Result<()> {
+fn crawl(initial_url: &str, series: bool, dest: &Option<PathBuf>) -> Result<()> {
     if series {
         let mut seen = HashSet::new();
-        if let &Some(ref output_dirname) = &dest {
+        if let Some(ref output_dirname) = *dest {
             std::fs::create_dir(output_dirname).chain_err(|| "Could not create output directory")?;
         }
-        let mut url = Some(initial_url.clone());
+        let mut url = Some(initial_url.to_string());
         while let Some(next_url) = url {
             seen.insert(next_url.clone());
             let (title, mut contents, doc) = get_chapter(next_url.as_ref())?;
             let doc = doc.unwrap();
-            let mut title = title.or(initial_url.split("/").last().map(|x| x.to_string()))
-                .unwrap_or("Unknown story".to_string());
+            let mut title = title.or_else(|| initial_url.split('/').last().map(|x| x.to_string()))
+                .unwrap_or_else(|| "Unknown story".to_string());
             let mut heading = String::from("<h1>");
             heading.push_str(title.as_str());
             heading.push_str("</h1>");
@@ -136,19 +136,18 @@ fn crawl(initial_url: String, series: bool, dest: Option<PathBuf>) -> Result<()>
             write_to_dest(&contents, &updated_path)?;
         }
     } else {
-        let (_, contents, _) = get_chapter(initial_url.as_ref())?;
+        let (_, contents, _) = get_chapter(initial_url)?;
         // let title = title.or(initial_url.split("/").last().map(|x| x.to_string()))
-        //     .unwrap_or("Unknown story".to_string());
-        write_to_dest(&contents, &dest)?;
+        write_to_dest(&contents, dest)?;
     }
     Ok(())
 }
 
 fn run() -> Result<()> {
     let args = Args::from_args();
-    crawl(args.initial_url,
+    crawl(args.initial_url.as_ref(),
           args.series,
-          args.output.map(PathBuf::from))?;
+          &args.output.map(PathBuf::from))?;
     Ok(())
 }
 
