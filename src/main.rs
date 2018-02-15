@@ -7,6 +7,9 @@ extern crate structopt_derive;
 #[macro_use]
 extern crate error_chain;
 extern crate termion;
+extern crate epub_builder;
+
+use epub_builder::EpubBuilder;
 
 use structopt::StructOpt;
 use std::collections::HashSet;
